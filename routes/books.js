@@ -2,18 +2,8 @@ const express = require('express')
 const router = express.Router()
 const Book = require('../models/book')
 const Author = require('../models/author')
-const fs = require('fs')
-const multer = require('multer')
-const path = require('path')
 
-const uploadPath = path.join('public' , Book.coverImageBasePath)
 const imageMineTypes = ['image/jpeg', 'image/png', 'image/gif']
-const upload = multer({
-    dest : uploadPath,
-    fileFilter : (req,file,callback) => {
-        callback(null,imageMineTypes.includes(file.mimetype))
-    }
-})
 
 // All Books Route
 router.get('/', async (req,res) => {
@@ -41,40 +31,39 @@ router.get('/', async (req,res) => {
 
 // New Book Route
 router.get('/new',async (req,res) => {
-    renderMessage(res, new Book())
+    renderNewPage(res, new Book())
 })
 
 // create Book Route
-router.post('/',upload.single('cover') ,async (req,res) => {
-    const fileName = req.file != null ? req.file.filename : null
+router.post('/',async (req,res) => {
     const book = new Book({
         title : req.body.title,
         description : req.body.description,
         publishDate : new Date(req.body.publishDate),
         pageCount : req.body.pageCount,
-        author : req.body.author,
-        coverImageName : fileName
+        author : req.body.author
     })
+    saveCoverImage(book, req.body.cover)
 
     try { 
         const newBook = await book.save()
         //res.redirect(`/books/${newBook.id}`)
         res.redirect('books')
     } catch (error) {
-        if(book.coverImageName != null){
-            removeCoverBook(book.coverImageName)
-        }
-        renderMessage(res, book, true)
+        renderNewPage(res, book, true)
     }
 })
 
-function removeCoverBook(fileName){
-    fs.unlink(path.join(uploadPath,fileName), err  =>  {
-        if(err) console.error(err)
-    })
+function saveCoverImage(book, coverEncoded){
+    if(coverEncoded == null) return
+    const cover = JSON.parse(coverEncoded)
+    if(cover != null && imageMineTypes.includes(cover.type)){
+        book.coverImage = new Buffer.from(cover.data,'base64')
+        book.coverImageType = cover.type
+    }
 }
 
-async function renderMessage(res, book, hasError = false){
+async function renderNewPage(res, book, hasError = false){
     try {
         const authors = await Author.find({})
 
