@@ -3,7 +3,7 @@ const Book = require('./book')
 
 const authorSchema = new mongoose.Schema({
     name : {
-        type : String,
+        type : String, 
         required : true
     }
 })
